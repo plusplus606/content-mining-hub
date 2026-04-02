@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints
+
+# caches
+.npm-cache/
+.eslintcache
