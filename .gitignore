@@ -50,3 +50,9 @@ __pycache__/
 # caches
 .npm-cache/
 .eslintcache
+
+# build artifacts
+build.log
+
+# one-off scripts
+*.py

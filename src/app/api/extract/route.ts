@@ -1,13 +1,7 @@
-import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { createLlmClient } from '@/lib/llm/client';
+import { getLlmRuntimeConfig, hasLlmApiKey } from '@/lib/llm/config';
 import fs from 'fs';
 import path from 'path';
-
-// 初始化 OpenAI 客户端
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || 'sk-empty',
-  baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-});
 
 // 技能包根目录
 const SKILLS_BASE_DIR = path.join(process.cwd(), 'src', 'data', 'skills');
@@ -98,7 +92,7 @@ function executeToolCall(skillDir: string, toolName: string, args: Record<string
 // Agent 系统提示
 // ============================================
 function buildSystemPrompt(skillDir: string): string {
-  return `你是一个专业的 AI 内容萃取代理（Agent）。你的任务是使用指定的技能包（Skill）来分析用户提供的文档内容，并输出结构化的萃取结果。
+  return `你是一个专业的 AI 内容处理助手。你的任务是使用指定的技能包（Skill）来分析用户提供的文档内容，并输出结构化的分析结果。
 
 ## 你的工作方式
 
@@ -109,14 +103,14 @@ function buildSystemPrompt(skillDir: string): string {
    - 接着读 \`templates/\` 目录下的模板 — 了解输出格式要求
    - 如果有 \`examples/\` 中的案例，可以选择性参考
    - 如果有 \`lessons.md\`，也要阅读以避免已知的陷阱
-3. **最后**，严格按照技能包中定义的工作流程和模板，对用户提供的文档内容进行萃取
+3. **最后**，严格按照技能包中定义的工作流程和模板，对用户提供的文档内容进行分析生成
 
 ## 当前技能包路径
 \`${skillDir}\`
 
 ## 要求
-- 你必须先充分了解技能包的所有文件后，再开始萃取
-- 萃取时必须严格遵循技能包中定义的工作流程和输出模板
+- 你必须先充分了解技能包的所有文件后，再开始分析
+- 处理时必须严格遵循技能包中定义的工作流程和输出模板
 - 输出必须是结构化的 Markdown 格式
 - 禁止编造或捏造不存在的信息
 - 对文档中的原文引用要准确`;
@@ -128,28 +122,22 @@ function buildSystemPrompt(skillDir: string): string {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { content, skillDir, promptTemplate, modelConfig } = body;
-
-    if (!content) {
-      return NextResponse.json(
-        { error: '缺少必要参数: content' },
-        { status: 400 }
-      );
-    }
+    const config = getLlmRuntimeConfig();
 
     // ---- 兼容旧版简单模式 ----
     if (!skillDir && promptTemplate) {
       const finalPrompt = promptTemplate.replace('{{content}}', content);
 
-      if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'sk-empty') {
+      if (!hasLlmApiKey(config)) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
         return NextResponse.json({
-          result: `> ⚠️ **注意**: 未检测到 \`OPENAI_API_KEY\`，当前为模拟萃取结果。\n\n- **文档长度**: ${content.length} 字符\n- **使用模型**: ${modelConfig?.model || 'Qwen3-Max'}`,
+          result: `> ⚠️ **注意**: 未检测到 \`OPENAI_API_KEY\`，当前为模拟生成结果。\n\n- **文档长度**: ${content.length} 字符\n- **使用模型**: ${modelConfig?.model || config.model}`,
         });
       }
 
+      const openai = createLlmClient();
       const response = await openai.chat.completions.create({
-        model: modelConfig?.model || 'Qwen3-Max',
+        model: modelConfig?.model || config.model,
         messages: [{ role: 'system', content: finalPrompt }],
         temperature: modelConfig?.temperature || 0.5,
         max_tokens: modelConfig?.maxTokens || 1000,
@@ -158,7 +146,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ result: response.choices[0]?.message?.content || '' });
     }
 
-    // ---- Agent 模式：使用 skillDir 进行多步骤萃取 ----
+    // ---- Agent 模式：使用 skillDir 进行多步骤分析生成 ----
     if (!skillDir) {
       return NextResponse.json(
         { error: '缺少必要参数: skillDir 或 promptTemplate' },
@@ -176,7 +164,7 @@ export async function POST(req: Request) {
     }
 
     // 模拟模式（无 API Key）
-    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'sk-empty') {
+    if (!hasLlmApiKey(config)) {
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // 列出技能包文件供展示
@@ -184,15 +172,17 @@ export async function POST(req: Request) {
       const fileList = files.map(f => `  - ${f}`).join('\n');
 
       return NextResponse.json({
-        result: `> ⚠️ **注意**: 未检测到 \`OPENAI_API_KEY\`，以下为 Agent 模式模拟结果。\n\n## 技能包信息\n- **技能包**: ${skillDir}\n- **文档长度**: ${content.length} 字符\n- **使用模型**: ${modelConfig?.model || 'Qwen3-Max'}\n\n## 技能包文件结构\n${fileList}\n\n## 说明\n在 Agent 模式下，LLM 会自动按需读取技能包中的文件（SKILL.md → workflow.md → templates → examples），完整理解技能后再对您的文档进行萃取。\n\n请在 \`.env.local\` 中配置 \`OPENAI_API_KEY\` 以体验完整的 Agent 萃取流程。`,
+        result: `> ⚠️ **注意**: 未检测到 \`OPENAI_API_KEY\`，以下为 Agent 模式模拟处理结果。\n\n## 技能包信息\n- **技能包**: ${skillDir}\n- **文档长度**: ${content.length} 字符\n- **使用模型**: ${modelConfig?.model || config.model}\n\n## 技能包文件结构\n${fileList}\n\n## 说明\n在 Agent 模式下，LLM 会自动按需读取技能包中的文件（SKILL.md → workflow.md → templates → examples），完整理解技能后再对您的文档进行分析生成。\n\n请在 \`.env.local\` 中配置 \`OPENAI_API_KEY\` 以体验完整的 Agent 处理流程。`,
       });
     }
+
+    const openai = createLlmClient();
 
     // ---- 真实 Agent Loop ----
     const systemPrompt = buildSystemPrompt(skillDir);
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `请使用技能包对以下文档内容进行萃取分析：\n\n---\n\n${content}` },
+      { role: 'user', content: `请使用技能包对以下文档内容进行分析生成：\n\n---\n\n${content}` },
     ];
 
     const MAX_ITERATIONS = 15;  // 安全上限，防止无限循环
@@ -203,7 +193,7 @@ export async function POST(req: Request) {
       console.log(`[Agent Loop] 第 ${iteration} 轮对话...`);
 
       const response = await openai.chat.completions.create({
-        model: modelConfig?.model || 'Qwen3-Max',
+        model: modelConfig?.model || config.model,
         messages,
         tools,
         tool_choice: iteration <= 2 ? 'auto' : 'auto',  // 始终允许调用工具
@@ -237,8 +227,8 @@ export async function POST(req: Request) {
           });
         }
       } else {
-        // 没有工具调用 — Agent 已完成萃取，返回最终结果
-        console.log(`[Agent Loop] 萃取完成，共 ${iteration} 轮对话。`);
+        // 没有工具调用 — Agent 已完成分析生成，返回最终结果
+        console.log(`[Agent Loop] 处理完成，共 ${iteration} 轮对话。`);
         return NextResponse.json({
           result: assistantMessage.content || '',
         });
@@ -254,9 +244,9 @@ export async function POST(req: Request) {
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '未知错误';
-    console.error('LLM Agent 萃取错误:', errorMessage);
+    console.error('LLM Agent 处理错误:', errorMessage);
     return NextResponse.json(
-      { error: errorMessage || '执行 Agent 萃取时发生错误' },
+      { error: errorMessage || '执行 Agent 处理时发生错误' },
       { status: 500 }
     );
   }

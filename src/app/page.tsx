@@ -3,6 +3,7 @@
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import FileList from '@/components/files/FileList';
+import DocumentChatModal from '@/components/files/DocumentChatModal';
 
 export default function Home() {
   return (
@@ -17,6 +18,9 @@ export default function Home() {
           <FileList />
         </main>
       </div>
+
+      {/* 文档查阅弹窗 */}
+      <DocumentChatModal />
     </div>
   );
 }

@@ -15,9 +15,9 @@ const notoSerif = Noto_Serif_SC({
 
 
 export const metadata: Metadata = {
-  title: '内容萃取平台 | Content Mining Hub',
+  title: '成课工作台 | Course Creation Workbench',
   description:
-    'AI 驱动的内容管理与知识萃取平台，支持多格式文档上传、AI Skill 配置和结构化知识提取。',
+    'AI 驱动的课程生产工作台，支持多格式文档上传、AI Skill 配置和结构化内容生成。',
 };
 
 export default function RootLayout({

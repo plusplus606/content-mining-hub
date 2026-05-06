@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { Document } from '@/types';
 import { getFileIcon, getFileTypeLabel } from '@/components/ui/Icons';
 import { useFileStore } from '@/store/useFileStore';
@@ -27,7 +26,9 @@ function formatDate(dateStr: string): string {
 }
 
 export default function FileCard({ document: doc, viewMode }: FileCardProps) {
-  const { selectedDocumentIds, toggleDocumentSelection } = useFileStore();
+  const selectedDocumentIds = useFileStore((state) => state.selectedDocumentIds);
+  const toggleDocumentSelection = useFileStore((state) => state.toggleDocumentSelection);
+  const setViewingDocumentId = useFileStore((state) => state.setViewingDocumentId);
   const isSelected = selectedDocumentIds.has(doc.id);
   const { icon: FileIcon, className: iconClass } = getFileIcon(doc.fileType);
   const typeLabel = getFileTypeLabel(doc.fileType);
@@ -40,16 +41,21 @@ export default function FileCard({ document: doc, viewMode }: FileCardProps) {
 
   if (viewMode === 'list') {
     return (
-      <Link href={`/document/${doc.id}`} id={`file-card-${doc.id}`}>
-        <div
-          className={`file-card !rounded-lg !p-4 flex items-center gap-4 group relative ${
-            isSelected ? 'active ring-1 ring-[#da7756]/30' : ''
-          }`}
-        >
+      <div 
+        onClick={(e) => {
+          const target = e.target as HTMLElement;
+          if (target && typeof target.closest === 'function' && target.closest('.select-checkbox')) return;
+          setViewingDocumentId(doc.id);
+        }}
+        id={`file-card-${doc.id}`}
+        className={`file-card !rounded-lg !p-4 flex items-center gap-4 group relative cursor-pointer ${
+          isSelected ? 'active ring-1 ring-[#da7756]/30' : ''
+        }`}
+      >
           {/* 选择框 */}
           <div
             onClick={handleSelect}
-            className={`flex-shrink-0 w-5 h-5 rounded border border-[var(--border-color)] flex items-center justify-center transition-all ${
+            className={`select-checkbox flex-shrink-0 w-5 h-5 rounded border border-[var(--border-color)] flex items-center justify-center transition-all ${
               isSelected
                 ? 'bg-[#da7756] border-[#da7756] text-white'
                 : 'bg-white group-hover:border-[#da7756]'
@@ -80,23 +86,27 @@ export default function FileCard({ document: doc, viewMode }: FileCardProps) {
           <span className="text-xs text-[var(--muted)] flex-shrink-0 w-24 text-right">
             {formatDate(doc.updatedAt)}
           </span>
-        </div>
-      </Link>
+      </div>
     );
   }
 
   // Grid View
   return (
-    <Link href={`/document/${doc.id}`} id={`file-card-${doc.id}`}>
-      <div
-        className={`file-card h-full flex flex-col group relative ${
-          isSelected ? 'active ring-1 ring-[#da7756]/30' : ''
-        }`}
-      >
+    <div 
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (target && typeof target.closest === 'function' && target.closest('.select-checkbox')) return;
+        setViewingDocumentId(doc.id);
+      }}
+      id={`file-card-${doc.id}`}
+      className={`file-card h-full flex flex-col group relative cursor-pointer ${
+        isSelected ? 'active ring-1 ring-[#da7756]/30' : ''
+      }`}
+    >
         {/* 选择框 */}
         <div
           onClick={handleSelect}
-          className={`absolute top-3 left-3 z-10 w-5 h-5 rounded border border-[var(--border-color)] flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 ${
+          className={`select-checkbox absolute top-3 left-3 z-10 w-5 h-5 rounded border border-[var(--border-color)] flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 ${
             isSelected
               ? 'bg-[#da7756] border-[#da7756] text-white opacity-100'
               : 'bg-white hover:border-[#da7756]'
@@ -126,7 +136,6 @@ export default function FileCard({ document: doc, viewMode }: FileCardProps) {
         <p className="text-[11px] text-[var(--muted)] mt-2">
           {formatDate(doc.updatedAt)}
         </p>
-      </div>
-    </Link>
+    </div>
   );
 }

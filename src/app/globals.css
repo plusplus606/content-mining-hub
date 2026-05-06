@@ -24,9 +24,12 @@
   --accent-hover: #c56546;
 
   --sidebar-bg: #f5f4ef;
-  --panel-bg: #ffffff;
-  --panel-border: rgba(0, 0, 0, 0.08);
-  --panel-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --panel-bg: rgba(255, 255, 255, 0.8);
+  --panel-border: rgba(0, 0, 0, 0.05);
+  --panel-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.4);
 
   --sidebar-width: 250px;
   --sidebar-collapsed-width: 64px;
@@ -36,7 +39,7 @@
 /* ======= 全局基础样式 ======= */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #d1d1d1 transparent;
+  scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -49,12 +52,12 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background: #d1d1d1;
-  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: #a3a3a3;
+  background: rgba(0, 0, 0, 0.2);
 }
 
 body {
@@ -62,20 +65,32 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans, "Inter", system-ui, sans-serif);
   min-height: 100vh;
+  letter-spacing: -0.01em;
 }
 
 /* ======= 扁平面板卡片 (原 glass-card) ======= */
 .glass-card {
   background: var(--panel-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--panel-border);
   box-shadow: var(--panel-shadow);
-  border-radius: 8px;
-  transition: all 0.2s ease-in-out;
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card:hover {
-  border-color: rgba(0, 0, 0, 0.15);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-color: rgba(218, 119, 86, 0.2);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.07);
 }
 
 /* ======= 侧边栏 ======= */
@@ -111,8 +126,8 @@ body {
 }
 
 .folder-node.active {
-  background: rgba(0, 0, 0, 0.06);
-  color: #171717;
+  background: rgba(218, 119, 86, 0.1);
+  color: #da7756;
   font-weight: 500;
 }
 
@@ -243,6 +258,105 @@ body {
 
 .breadcrumb-separator {
   color: #a3a3a3;
+}
+
+/* ======= Chat Markdown ======= */
+.chat-markdown {
+  color: var(--foreground);
+  line-height: 1.9;
+  font-size: 16px;
+}
+
+.chat-markdown p {
+  margin: 0 0 14px;
+}
+
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3,
+.chat-markdown h4 {
+  margin: 20px 0 12px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.chat-markdown h1 {
+  font-size: 1.6rem;
+}
+
+.chat-markdown h2 {
+  font-size: 1.35rem;
+}
+
+.chat-markdown h3 {
+  font-size: 1.15rem;
+}
+
+.chat-markdown ul,
+.chat-markdown ol {
+  margin: 0 0 14px;
+  padding-left: 1.4rem;
+}
+
+.chat-markdown li + li {
+  margin-top: 6px;
+}
+
+.chat-markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.92em;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
+  padding: 0.12em 0.4em;
+}
+
+.chat-markdown pre {
+  background: #f6f6f6;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 0 0 14px;
+  overflow-x: auto;
+}
+
+.chat-markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.chat-markdown blockquote {
+  margin: 0 0 14px;
+  border-left: 3px solid rgba(218, 119, 86, 0.45);
+  padding-left: 12px;
+  color: #5f5f5f;
+}
+
+.chat-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+}
+
+.chat-markdown th,
+.chat-markdown td {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.chat-markdown thead th {
+  background: rgba(0, 0, 0, 0.04);
+  font-weight: 600;
+}
+
+.chat-markdown-link {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.chat-markdown-link:hover {
+  color: #1d4ed8;
 }
 
 /* ======= 双栏对比视图 ======= */
@@ -433,4 +547,3 @@ body {
   border-top: 1px solid rgba(0,0,0,0.06);
   margin: 2em 0;
 }
-

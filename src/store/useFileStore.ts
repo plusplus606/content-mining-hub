@@ -1,8 +1,17 @@
 import { create } from 'zustand';
-import { Folder, ViewMode, SortBy, SortOrder, Document, FileType } from '@/types';
+import {
+  Folder,
+  ViewMode,
+  SortBy,
+  SortOrder,
+  Document,
+  FileType,
+  RecentChat,
+} from '@/types';
 import {
   mockFolders,
   mockDocuments,
+  mockRecentChats,
   getBreadcrumbPath,
 } from '@/data/mockData';
 
@@ -41,8 +50,12 @@ interface FileStore {
   // 侧边栏
   sidebarCollapsed: boolean;
 
-  // 选择状态
+  // 界面状态
   selectedDocumentIds: Set<string>;
+  showUploadModal: boolean;
+  viewingDocumentId: string | null;
+  launchMode: 'chat' | 'project';
+  recentChats: RecentChat[];
 
   // 计算属性方法
   getCurrentDocuments: () => Document[];
@@ -58,6 +71,15 @@ interface FileStore {
   toggleSidebar: () => void;
   toggleDocumentSelection: (id: string) => void;
   clearSelection: () => void;
+  setShowUploadModal: (show: boolean) => void;
+  setViewingDocumentId: (id: string | null) => void;
+  startNewConversation: (title?: string) => string;
+  openConversation: () => void;
+  enterProjectLaunch: () => void;
+  updateRecentChat: (
+    chatId: string,
+    payload: Partial<Pick<RecentChat, 'title' | 'lastMessage' | 'updatedAt'>>
+  ) => void;
 
   // 数据变更
   addFolder: (name: string, parentId: string | null) => void;
@@ -70,13 +92,17 @@ export const useFileStore = create<FileStore>((set, get) => ({
   documents: [...mockDocuments],
 
   // 初始状态
-  selectedFolderId: null,
-  expandedFolderIds: new Set<string>(),
+  selectedFolderId: 'root-kb-base',
+  expandedFolderIds: new Set<string>(['root-kb-base']),
   viewMode: 'grid',
   sortBy: 'name',
   sortOrder: 'asc',
   sidebarCollapsed: false,
   selectedDocumentIds: new Set<string>(),
+  showUploadModal: false,
+  viewingDocumentId: null,
+  launchMode: 'chat',
+  recentChats: [...mockRecentChats],
 
   // 获取当前文件夹下的文档
   getCurrentDocuments: () => {
@@ -109,6 +135,7 @@ export const useFileStore = create<FileStore>((set, get) => ({
       return {
         selectedFolderId: folderId,
         expandedFolderIds: newExpanded,
+        launchMode: 'project',
       };
     });
   },
@@ -148,6 +175,43 @@ export const useFileStore = create<FileStore>((set, get) => ({
   },
 
   clearSelection: () => set({ selectedDocumentIds: new Set() }),
+  setShowUploadModal: (show: boolean) => set({ showUploadModal: show }),
+  setViewingDocumentId: (id: string | null) => set({ viewingDocumentId: id }),
+  startNewConversation: (title?: string) => {
+    const safeTitle = title?.trim();
+    const now = new Date();
+    const recordTitle =
+      safeTitle && safeTitle.length > 0
+        ? safeTitle
+        : `新对话 ${now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
+    const newRecord: RecentChat = {
+      id: `chat-${Date.now()}`,
+      title: recordTitle,
+      lastMessage: '',
+      updatedAt: now.toISOString(),
+    };
+
+    set((state) => ({
+      launchMode: 'chat',
+      selectedFolderId: null,
+      selectedDocumentIds: new Set<string>(),
+      recentChats: [newRecord, ...state.recentChats].slice(0, 20),
+    }));
+
+    return newRecord.id;
+  },
+  openConversation: () =>
+    set({
+      launchMode: 'chat',
+      selectedFolderId: null,
+      selectedDocumentIds: new Set<string>(),
+    }),
+  enterProjectLaunch: () =>
+    set({
+      launchMode: 'project',
+      selectedFolderId: null,
+      selectedDocumentIds: new Set<string>(),
+    }),
 
   // 新建文件夹
   addFolder: (name: string, parentId: string | null) => {
@@ -182,6 +246,7 @@ export const useFileStore = create<FileStore>((set, get) => ({
         folders: newFolders,
         expandedFolderIds: newExpanded,
         selectedFolderId: newFolder.id,
+        launchMode: 'project',
       };
     });
   },
@@ -191,6 +256,35 @@ export const useFileStore = create<FileStore>((set, get) => ({
     set((state) => ({
       documents: [...state.documents, doc],
     }));
+  },
+  updateRecentChat: (chatId, payload) => {
+    set((state) => {
+      const now = payload.updatedAt || new Date().toISOString();
+      const existing = state.recentChats.find((item) => item.id === chatId);
+
+      if (!existing) {
+        const newItem: RecentChat = {
+          id: chatId,
+          title: payload.title || '新对话',
+          lastMessage: payload.lastMessage || '',
+          updatedAt: now,
+        };
+        return {
+          recentChats: [newItem, ...state.recentChats].slice(0, 20),
+        };
+      }
+
+      const updatedItem: RecentChat = {
+        ...existing,
+        ...payload,
+        updatedAt: now,
+      };
+
+      const others = state.recentChats.filter((item) => item.id !== chatId);
+      return {
+        recentChats: [updatedItem, ...others].slice(0, 20),
+      };
+    });
   },
 }));
 

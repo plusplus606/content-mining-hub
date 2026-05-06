@@ -5,6 +5,7 @@ import { Folder } from '@/types';
 import { useSkillStore } from '@/store/useSkillStore';
 import { getFolderIcon } from '@/components/ui/Icons';
 import { useRouter } from 'next/navigation';
+import { createElement } from 'react';
 
 interface SkillFolderNodeProps {
   folder: Folder;
@@ -48,8 +49,6 @@ export default function SkillFolderNode({ folder, depth = 0 }: SkillFolderNodePr
     router.push('/skills');
   };
 
-  const IconComponent = getFolderIcon(folder.icon);
-
   return (
     <div>
       <div
@@ -78,10 +77,10 @@ export default function SkillFolderNode({ folder, depth = 0 }: SkillFolderNodePr
         </span>
 
         {/* 文件夹图标 */}
-        <IconComponent
-          size={16}
-          className={isSelected ? 'text-[#da7756]' : 'text-[var(--muted)]'}
-        />
+        {createElement(getFolderIcon(folder.icon), {
+          size: 16,
+          className: isSelected ? 'text-[#da7756]' : 'text-[var(--muted)]',
+        })}
 
         {/* 文件夹名称 */}
         <span className="truncate flex-1 font-medium">{folder.name}</span>

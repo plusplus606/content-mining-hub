@@ -1,5 +1,5 @@
 // ============================================
-// AI 内容萃取平台 — 核心类型定义
+// 成课工作台 — 核心类型定义
 // ============================================
 
 export type FileType = 'pdf' | 'markdown' | 'docx' | 'txt' | 'json' | 'xlsx';
@@ -45,7 +45,56 @@ export type ViewMode = 'grid' | 'list';
 export type SortBy = 'name' | 'date' | 'size';
 export type SortOrder = 'asc' | 'desc';
 
-export interface BreadcrumbItem {
+export interface TargetStudent {
   id: string;
   name: string;
+  description: string;
+  avatar?: string;
+}
+
+export interface UserProfile {
+  name: string;
+  avatar?: string;
+  title: string;
+  bio: string;
+  industry: string;
+  yearsOfExperience: number;
+  expertise: string[];           // 专业领域标签
+  teachingStyles: string[];      // 授课风格标签
+  contentPreferences: string;
+  targetStudents: TargetStudent[]; // 授课对象列表（与对话框联动）
+  achievements: string[];         // 资质/成就
+  updatedAt: string;
+}
+
+export interface RecentChat {
+  id: string;
+  title: string;
+  lastMessage: string;
+  updatedAt: string;
+}
+
+export type ChatRole = 'system' | 'user' | 'assistant';
+
+export interface ChatMessage {
+  id: string;
+  role: ChatRole;
+  content: string;
+  createdAt: string;
+}
+
+export interface ChatConversation {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  loading: boolean;
+  updatedAt: string;
+}
+
+export interface LlmRuntimeConfig {
+  apiKey: string;
+  baseURL: string;
+  model: string;
+  temperature: number;
+  maxTokens: number;
 }

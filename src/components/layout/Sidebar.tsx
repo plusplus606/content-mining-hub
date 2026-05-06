@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Sparkles,
   FolderPlus,
@@ -15,59 +15,74 @@ import {
   Database,
   Cpu,
   Plus,
+  User,
+  Settings,
+  MessageSquarePlus,
+  MessageSquare,
 } from 'lucide-react';
 import FolderTree from './FolderTree';
-import SkillFolderTree from './SkillFolderTree';
+import Modal from '@/components/ui/Modal';
+import { useClickOutside } from '@/hooks/useClickOutside';
+
 import { useFileStore, getFileTypeFromName } from '@/store/useFileStore';
 import { useSkillStore } from '@/store/useSkillStore';
+import { useChatStore } from '@/store/useChatStore';
 import { Document } from '@/types';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isSkillsPage = pathname?.startsWith('/skills');
+  const activeTab = searchParams.get('tab') || 'skills';
 
   const {
     sidebarCollapsed,
     toggleSidebar,
     selectedFolderId: selectedFileFolderId,
+    launchMode,
     addFolder,
     addDocument,
     getSelectedFolderName,
     selectFolder,
+    showUploadModal,
+    setShowUploadModal,
+    recentChats,
+    openConversation,
   } = useFileStore();
 
-  const { 
-    skills, 
-    selectedSkillId, 
-    selectSkill, 
-    addSkill,
-    selectedFolderId: selectedSkillFolderId,
-    getSelectedSkillFolderName,
-    addSkillFolder,
-  } = useSkillStore();
+  const { getSelectedSkillFolderName } = useSkillStore();
+  const { ensureConversation } = useChatStore();
 
-  const [showNewFolderModal, setShowNewFolderModal] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  // const [showUploadModal, setShowUploadModal] = useState(false); // 移除局部状态，改用全局状态
+  const [newProjectName, setNewProjectName] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<
     { file: File; content: string; status: 'reading' | 'ready' | 'done' }[]
   >([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [showConfigMenu, setShowConfigMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const configMenuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useClickOutside([configMenuRef, triggerRef], () => setShowConfigMenu(false), {
+    active: showConfigMenu,
+  });
 
   const parentFolderName = isSkillsPage ? getSelectedSkillFolderName() : getSelectedFolderName();
+  const isNewChatActive =
+    (pathname === '/' || pathname?.startsWith('/chat')) &&
+    launchMode === 'chat' &&
+    !selectedFileFolderId;
+  const isContentLibraryActive = pathname === '/skills' && activeTab === 'files';
 
-  // 处理新建文件夹
-  const handleCreateFolder = () => {
-    if (!newFolderName.trim()) return;
-    if (isSkillsPage) {
-      addSkillFolder(newFolderName.trim(), selectedSkillFolderId);
-    } else {
-      addFolder(newFolderName.trim(), selectedFileFolderId);
-    }
-    setShowNewFolderModal(false);
-    setNewFolderName('');
+  // 处理新建项目
+  const handleCreateProject = () => {
+    if (!newProjectName.trim()) return;
+    addFolder(newProjectName.trim(), null);
+    setShowNewProjectModal(false);
+    setNewProjectName('');
   };
 
   // 读取文件内容
@@ -188,10 +203,10 @@ export default function Sidebar() {
             <>
               <div className="flex-1 min-w-0">
                 <h1 className="text-sm font-semibold text-[#1a1a1a] truncate font-serif tracking-tight">
-                  内容萃取
+                  成课工作台
                 </h1>
                 <p className="text-[10px] text-[var(--muted)] truncate font-medium uppercase tracking-widest">
-                  Content Mining Hub
+                  Course Creation Workbench
                 </p>
               </div>
               <button
@@ -215,201 +230,310 @@ export default function Sidebar() {
               aria-label="展开侧边栏"
               id="toggle-sidebar-expand"
             >
-              <PanelLeftOpen size={18} />
+            <PanelLeftOpen size={18} />
+            </button>
+            
+            <div className="h-px w-8 bg-gray-100 my-1" />
+            
+            <button
+              onClick={() => {
+                openConversation();
+                router.push('/');
+              }}
+              className={`p-2 rounded-lg transition-all ${
+                isNewChatActive ? 'bg-[rgba(218,119,86,0.1)] text-[#da7756]' : 'text-gray-500 hover:bg-gray-100'
+              }`}
+              title="新对话"
+            >
+              <MessageSquarePlus size={18} />
+            </button>
+
+            <Link
+              href="/skills?tab=files"
+              className={`p-2 rounded-lg transition-all ${
+                isContentLibraryActive ? 'bg-[rgba(218,119,86,0.1)] text-[#da7756]' : 'text-gray-500 hover:bg-gray-100'
+              }`}
+              title="内容库"
+            >
+              <Database size={18} />
+            </Link>
+
+            <button
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-all"
+              title="最近对话"
+              onClick={() => {
+                const el = document.getElementById('config-trigger-collapsed');
+                if (el) el.click(); // 借用配置中心逻辑或单纯示意
+              }}
+            >
+              <MessageSquare size={18} />
             </button>
           </div>
         )}
 
-        {/* 全局导航 Tab */}
+        {/* 核心内容区 */}
         {!sidebarCollapsed && (
-          <div className="px-3 py-2 border-b border-[var(--border-color)] flex gap-1 flex-shrink-0">
-            <Link
-              href="/"
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                !isSkillsPage
-                  ? 'bg-[var(--surface-hover)] text-[var(--foreground)]'
-                  : 'text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]'
-              }`}
-            >
-              <Database size={14} />
-              工作台
-            </Link>
-            <Link
-              href="/skills"
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                isSkillsPage
-                  ? 'bg-[var(--surface-hover)] text-[var(--foreground)]'
-                  : 'text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]'
-              }`}
-            >
-              <Cpu size={14} />
-              Skill 引擎
-            </Link>
-          </div>
-        )}
-
-        {/* 区域标题 */}
-          <div className="px-4 pt-4 pb-1">
-            <span className="text-[11px] font-medium text-[var(--muted)] uppercase tracking-wider">
-              {isSkillsPage ? '技能库' : '工作空间'}
-            </span>
-          </div>
-
-        {/* 核心内容区 (文件夹树 或 Skill列表) */}
-        {!sidebarCollapsed && (
-          <div className="flex-1 overflow-y-auto px-2 pb-2">
-            {!isSkillsPage ? (
-              <FolderTree />
-            ) : (
-              <SkillFolderTree />
-            )}
-          </div>
-        )}
-
-        {/* 底部操作区 */}
-        {!sidebarCollapsed && (
-          <div className="p-3 border-t border-[var(--border-color)] space-y-2 flex-shrink-0">
-            {!isSkillsPage ? (
-              <>
+          <div className="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-4 mt-4">
+            
+            {/* 第一区块：核心操作 */}
+            <div>
+              <div className="space-y-1">
+                {/* 1. 新对话 */}
                 <button
-                  className="btn-ghost w-full justify-start"
-                  id="btn-new-folder"
                   onClick={() => {
-                    setNewFolderName('');
-                    setShowNewFolderModal(true);
+                    openConversation();
+                    router.push('/');
+                  }}
+                  className={`w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    isNewChatActive
+                      ? 'bg-[rgba(218,119,86,0.1)] text-[#da7756]'
+                      : 'text-[#555] opacity-80 hover:opacity-100 hover:bg-gray-100'
+                  }`}
+                >
+                  <MessageSquarePlus size={16} />
+                  <span>新对话</span>
+                </button>
+
+                {/* 2. 内容库 */}
+                <Link
+                  href="/skills?tab=files"
+                  className={`w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    isContentLibraryActive
+                      ? 'bg-[rgba(218,119,86,0.1)] text-[#da7756]'
+                      : 'text-[#555] hover:bg-gray-100'
+                  }`}
+                >
+                  <Database size={16} />
+                  <span>内容库</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* 第二分区：研课项目 */}
+            <div>
+              <div className="px-2 mb-2 flex items-center justify-between">
+                <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-[0.15em] opacity-80">
+                  研课项目
+                </span>
+              </div>
+              <div className="space-y-0.5">
+                <button
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--surface-hover)] rounded-md transition-colors"
+                  onClick={() => {
+                    setNewProjectName('');
+                    setShowNewProjectModal(true);
                   }}
                 >
-                  <FolderPlus size={16} />
-                  <span>新建文件夹</span>
+                  <FolderPlus size={16} className="text-[var(--muted)]" />
+                  新项目
                 </button>
-                <button
-                  className="btn-primary w-full justify-center"
-                  id="btn-upload-file"
-                  onClick={() => {
-                    setUploadedFiles([]);
-                    setShowUploadModal(true);
-                  }}
-                >
-                  <Upload size={16} />
-                  <span>上传文件</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  className="btn-ghost w-full justify-start"
-                  id="btn-new-skill-folder"
-                  onClick={() => {
-                    setNewFolderName('');
-                    setShowNewFolderModal(true);
-                  }}
-                >
-                  <FolderPlus size={16} />
-                  <span>新建技能库</span>
-                </button>
-                <button
-                  className="btn-primary w-full justify-center bg-[#2c2c2c] hover:bg-[#1a1a1a]"
-                  id="btn-new-skill"
-                  onClick={() => {
-                    const targetFolderId = selectedSkillFolderId || 'root-skills';
-                    const newId = addSkill({
-                      name: '新 AI Skill',
-                      folderId: targetFolderId,
-                      description: '',
-                      promptTemplate: '在此输入 Prompt 模板',
-                      modelConfig: { model: 'Qwen3-Max', temperature: 0.5, maxTokens: 1000 },
-                    });
-                    router.push('/skills');
-                  }}
-                >
-                  <Plus size={16} />
-                  <span>新建技能</span>
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </aside>
+                <FolderTree />
+              </div>
+            </div>
 
-      {/* ===== 新建文件夹 Modal ===== */}
-      {showNewFolderModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowNewFolderModal(false)}
-        >
-          <div
-            className="glass-card w-full max-w-md p-6 mx-4 animate-fade-in-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                新建文件夹
-              </h2>
+            {/* 第三分区：最近 */}
+            <div>
+              <div className="px-2 mb-1.5 flex items-center justify-between">
+                <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-[0.15em] opacity-80">
+                  最近
+                </span>
+              </div>
+              <div className="space-y-0.5">
+                {(recentChats ?? []).map((chat) => (
+                  <button
+                    key={chat.id}
+                    onClick={() => {
+                      openConversation();
+                      ensureConversation(chat.id, chat.title);
+                      router.push(`/chat/${chat.id}`);
+                    }}
+                    className="w-full text-left group flex items-center px-3 py-1.5 rounded-lg text-[#555] hover:bg-gray-50 transition-all cursor-pointer overflow-hidden"
+                  >
+                    <span className="text-[13px] font-medium truncate group-hover:text-[var(--foreground)]">
+                      {chat.title}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 底部配置区域 */}
+            <div className="mt-auto px-1 relative">
+              {showConfigMenu && (
+                <div 
+                  ref={configMenuRef}
+                  className="absolute bottom-full left-0 w-full mb-2 bg-white rounded-xl shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1),0_10px_15px_-3px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200 z-50 p-1.5"
+                >
+                  <Link
+                    href="/skills?tab=profile"
+                    onClick={() => setShowConfigMenu(false)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      pathname === '/skills' && activeTab === 'profile'
+                        ? 'bg-[rgba(218,119,86,0.1)] text-[#da7756]'
+                        : 'text-[#555] hover:bg-gray-100'
+                    }`}
+                  >
+                    <User size={16} />
+                    <span>我的风格</span>
+                  </Link>
+                  <Link
+                    href="/skills?tab=skills"
+                    onClick={() => setShowConfigMenu(false)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      pathname === '/skills' && activeTab === 'skills'
+                        ? 'bg-[rgba(218,119,86,0.1)] text-[#da7756]'
+                        : 'text-[#555] hover:bg-gray-100'
+                    }`}
+                  >
+                    <Cpu size={16} />
+                    <span>技能广场</span>
+                  </Link>
+                  <div className="h-px bg-gray-100 my-1 mx-2" />
+                  <button
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-[#888] hover:bg-gray-50 transition-all"
+                  >
+                    <Settings size={16} />
+                    <span>更多设置</span>
+                  </button>
+                </div>
+              )}
+              
               <button
-                className="btn-ghost !p-1.5"
-                onClick={() => setShowNewFolderModal(false)}
+                ref={triggerRef}
+                onClick={() => setShowConfigMenu(!showConfigMenu)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  showConfigMenu ? 'bg-gray-100' : 'hover:bg-gray-100 text-[#555]'
+                }`}
               >
-                <X size={18} />
+                <div className="w-6 h-6 rounded-lg bg-gray-900 flex items-center justify-center text-white flex-shrink-0">
+                  <User size={14} />
+                </div>
+                <div className="flex-1 text-left truncate">配置中心</div>
+                <Settings size={14} className={`text-gray-400 transition-transform duration-300 ${showConfigMenu ? 'rotate-90' : ''}`} />
               </button>
             </div>
+          </div>
+        )}
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-[var(--muted)] mb-1.5">
-                  父文件夹
-                </label>
-                <div className="px-3 py-2 rounded-lg bg-[var(--surface-hover)] text-sm text-[var(--foreground)] border border-[var(--border-color)]">
-                  📁 {parentFolderName}
+        {/* 收起状态的底部配置按钮 */}
+        {sidebarCollapsed && (
+          <div className="mt-auto flex flex-col items-center py-4 border-t border-[var(--border-color)]">
+             <button
+              ref={triggerRef}
+              id="config-trigger-collapsed"
+              onClick={() => setShowConfigMenu(!showConfigMenu)}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 relative"
+            >
+              <Settings size={20} className={showConfigMenu ? 'text-[#da7756]' : ''} />
+              
+              {showConfigMenu && (
+                <div 
+                  className="absolute left-full bottom-0 ml-4 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 p-1.5"
+                  onMouseLeave={() => setShowConfigMenu(false)}
+                >
+                  <Link
+                    href="/skills?tab=profile"
+                    onClick={() => setShowConfigMenu(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-[#555] hover:bg-gray-100 transition-all"
+                  >
+                    <User size={16} />
+                    <span>我的风格</span>
+                  </Link>
+                  <Link
+                    href="/skills?tab=skills"
+                    onClick={() => setShowConfigMenu(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-[#555] hover:bg-gray-100 transition-all"
+                  >
+                    <Cpu size={16} />
+                    <span>技能广场</span>
+                  </Link>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm text-[var(--muted)] mb-1.5">
-                  文件夹名称
-                </label>
-                <input
-                  type="text"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  placeholder="请输入文件夹名称"
-                  className="w-full bg-[var(--background)] border border-[var(--border-color)] rounded-lg px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-colors"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleCreateFolder();
-                  }}
-                />
+              )}
+            </button>
+          </div>
+        )}
+
+
+      </aside>
+
+      {/* ===== 新建项目 Modal ===== */}
+      <Modal
+        isOpen={showNewProjectModal}
+        onClose={() => setShowNewProjectModal(false)}
+        overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(20,20,20,0.45)] backdrop-blur-[6px] px-4"
+        contentClassName="w-full max-w-[460px] rounded-3xl border border-[rgba(255,255,255,0.55)] bg-[linear-gradient(160deg,rgba(255,255,255,0.97),rgba(251,247,242,0.96))] shadow-[0_24px_80px_rgba(20,20,20,0.2)] animate-fade-in-up overflow-hidden"
+      >
+            <div className="px-7 pt-6 pb-5 border-b border-[rgba(0,0,0,0.06)] bg-[linear-gradient(135deg,rgba(218,119,86,0.12),rgba(218,119,86,0.03))]">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#da7756] text-white flex items-center justify-center shadow-[0_8px_20px_rgba(218,119,86,0.35)]">
+                    <Plus size={16} />
+                  </div>
+                  <div>
+                    <h2 className="text-[19px] font-semibold text-[var(--foreground)] leading-none">
+                      新建项目
+                    </h2>
+                    <p className="text-xs text-[var(--muted)] mt-2">
+                      输入项目名称，立即创建一个新的研课项目。
+                    </p>
+                  </div>
+                </div>
+                <button
+                  className="w-8 h-8 rounded-lg text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-white/70 transition-colors flex items-center justify-center"
+                  onClick={() => setShowNewProjectModal(false)}
+                  aria-label="关闭"
+                >
+                  <X size={16} />
+                </button>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 mt-6">
+            <div className="px-7 py-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[12px] font-medium text-[var(--muted)] mb-2 tracking-wide uppercase">
+                    项目名称
+                  </label>
+                  <input
+                    type="text"
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                    placeholder="例如：一线经纪人 AI 实战课"
+                    className="w-full bg-white border border-[var(--border-color)] rounded-xl px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[#a6a6a6] focus:outline-none focus:border-[#da7756] focus:ring-4 focus:ring-[rgba(218,119,86,0.13)] transition-all"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCreateProject();
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="px-7 pb-6 flex justify-end gap-2.5">
               <button
-                className="btn-ghost"
-                onClick={() => setShowNewFolderModal(false)}
+                onClick={() => setShowNewProjectModal(false)}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-[#666] hover:text-[#222] hover:bg-[rgba(0,0,0,0.05)] transition-colors"
               >
                 取消
               </button>
               <button
-                className="btn-primary"
-                disabled={!newFolderName.trim()}
-                onClick={handleCreateFolder}
+                disabled={!newProjectName.trim()}
+                onClick={handleCreateProject}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#da7756] hover:bg-[#c56546] disabled:bg-[#e4e4e4] disabled:text-[#a9a9a9] disabled:cursor-not-allowed shadow-[0_10px_24px_rgba(218,119,86,0.32)] transition-all"
               >
                 <FolderPlus size={16} />
-                创建
+                创建项目
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* ===== 上传文件 Modal ===== */}
-      {showUploadModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowUploadModal(false)}
-        >
-          <div
-            className="glass-card w-full max-w-lg p-6 mx-4 animate-fade-in-up"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Modal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+        contentClassName="glass-card w-full max-w-lg p-6 mx-4 animate-fade-in-up"
+      >
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 上传文件
@@ -537,9 +661,7 @@ export default function Sidebar() {
                 )}
               </div>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 }

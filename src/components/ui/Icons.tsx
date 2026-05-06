@@ -24,6 +24,7 @@ const folderIconMap: Record<string, LucideIcon> = {
   'message-square': MessageSquare,
   calendar: Calendar,
   sparkles: Sparkles,
+  folder: Folder,
 };
 
 export function getFolderIcon(iconName?: string): LucideIcon {

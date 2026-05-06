@@ -1,29 +1,27 @@
-import { Folder, Document, Skill } from '@/types';
+import { Folder, Document, Skill, RecentChat } from '@/types';
 
 export const mockFolders: Folder[] = [
   {
     id: 'root-kb-base',
-    name: '知识库',
+    name: '经纪人AI实战课',
     parentId: null,
-    children: [
-      { id: 'kb-rules', name: '规则标准', parentId: 'root-kb-base', children: [], createdAt: '2026-03-31T19:48:49.311622' },
-      { id: 'kb-experience', name: '实战经验', parentId: 'root-kb-base', children: [], createdAt: '2026-03-31T19:48:49.311622' },
-      { id: 'kb-pro', name: '专业知识', parentId: 'root-kb-base', children: [], createdAt: '2026-03-31T19:48:49.311622' },
-      { id: 'kb-materials', name: '调研素材', parentId: 'root-kb-base', children: [], createdAt: '2026-03-31T19:48:49.311622' },
-    ],
+    icon: 'folder',
+    children: [],
     createdAt: '2026-03-31T19:48:49.311622'
   },
   {
     id: 'root-chat',
-    name: '对客记录',
+    name: '房产市场 26 年行情分析',
     parentId: null,
+    icon: 'folder',
     children: [],
     createdAt: '2026-03-31T19:48:49.311622'
   },
   {
     id: 'root-extracted',
-    name: '萃取结果',
+    name: '人生六套房',
     parentId: null,
+    icon: 'folder',
     children: [],
     createdAt: '2026-03-31T19:48:49.311622'
   }
@@ -31,7 +29,7 @@ export const mockFolders: Folder[] = [
 export const mockDocuments: Document[] = [
   {
     id: 'doc-actual-5',
-    folderId: 'kb-rules',
+    folderId: 'root-kb-base',
     name: '收房增长力-解密400(PDF)',
     fileType: 'pdf',
     size: 35379,
@@ -42,7 +40,7 @@ export const mockDocuments: Document[] = [
   },
   {
     id: 'doc-actual-1',
-    folderId: 'kb-experience',
+    folderId: 'root-kb-base',
     name: '明熹-实战总结(PDF)',
     fileType: 'pdf',
     size: 6945,
@@ -53,7 +51,7 @@ export const mockDocuments: Document[] = [
   },
   {
     id: 'doc-actual-4',
-    folderId: 'kb-experience',
+    folderId: 'root-kb-base',
     name: '花桥销冠圆桌会(MD)',
     fileType: 'markdown',
     size: 46266,
@@ -64,7 +62,7 @@ export const mockDocuments: Document[] = [
   },
   {
     id: 'doc-actual-2',
-    folderId: 'kb-materials',
+    folderId: 'root-kb-base',
     name: '姑姑录音(DOCX)',
     fileType: 'docx',
     size: 11034,
@@ -75,7 +73,7 @@ export const mockDocuments: Document[] = [
   },
   {
     id: 'doc-split-1',
-    folderId: 'root-chat',
+    folderId: 'root-kb-base',
     name: '线上咨询记录',
     fileType: 'xlsx',
     size: 82112,
@@ -86,7 +84,7 @@ export const mockDocuments: Document[] = [
   },
   {
     id: 'doc-split-2',
-    folderId: 'root-chat',
+    folderId: 'root-kb-base',
     name: '房源意向沟通',
     fileType: 'xlsx',
     size: 65186,
@@ -97,7 +95,7 @@ export const mockDocuments: Document[] = [
   },
   {
     id: 'doc-split-3',
-    folderId: 'root-chat',
+    folderId: 'root-kb-base',
     name: '签约带看反馈',
     fileType: 'xlsx',
     size: 48576,
@@ -135,9 +133,9 @@ export const mockSkills: Skill[] = [
   },
   {
     id: 'skill-knowledge-extraction',
-    name: '知识萃取',
+    name: '知识处理',
     folderId: 'root-skills',
-    description: '知识萃取工具：从课程、文档、视频等素材中提取有价值的知识，沉淀到知识库中',
+    description: '知识处理工具：从课程、文档等素材中生成体系化内容',
     skillDir: 'knowledge-extraction',
     modelConfig: {
       model: 'Qwen3-Max',
@@ -161,12 +159,6 @@ export const mockSkills: Skill[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
-];
-
-export const mockModels = [
-  { id: 'Qwen3-Max', name: 'Qwen3-Max (旗舰版)', provider: 'Aliyun', contextWindow: '128k' },
-  { id: 'Qwen3-Plus', name: 'Qwen3-Plus (增强版)', provider: 'Aliyun', contextWindow: '128k' },
-  { id: 'Qwen3-Turbo', name: 'Qwen3-Turbo (极速版)', provider: 'Aliyun', contextWindow: '128k' },
 ];
 
 export function getDocumentById(id: string): Document | undefined {
@@ -193,3 +185,24 @@ export function getBreadcrumbPath(folders: Folder[], folderId: string): { id: st
   findPath(folders, folderId);
   return path;
 }
+
+export const mockRecentChats: RecentChat[] = [
+  {
+    id: 'chat-1',
+    title: '房产市场 26 年行情分析',
+    lastMessage: '目前的政策导向显示...',
+    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2小时前
+  },
+  {
+    id: 'chat-2',
+    title: '收房增长力方法论建议',
+    lastMessage: 'OCMIC 五步法的核心在于...',
+    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(), // 3天前
+  },
+  {
+    id: 'chat-3',
+    title: '关于一线经纪人 AI 实战的讨论',
+    lastMessage: '提示词优化的关键点是...',
+    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15).toISOString(), // 15天前
+  }
+];
